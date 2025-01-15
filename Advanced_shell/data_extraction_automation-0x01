@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# Define the input JSON file
+INPUT_FILE="data.json"
+
+# Extract Pokémon name, height, weight, and type using jq
+name=$(jq -r '.name' "$INPUT_FILE")
+height=$(jq -r '.height' "$INPUT_FILE")
+weight=$(jq -r '.weight' "$INPUT_FILE")
+type=$(jq -r '.types[0].type.name' "$INPUT_FILE") # Assumes first type
+
+# Validate input
+if [ -z "$name" ] || [ -z "$height" ] || [ -z "$weight" ] || [ -z "$type" ]; then
+    echo "Error: Failed to extract data from $INPUT_FILE. Ensure the JSON file is valid."
+    exit 1
+fi
+
+# Capitalize the first letter of the type
+type=$(echo "$type" | sed -e 's/^./\u&/')
+
+# Convert height to meters and weight to kilograms using awk
+height_m=$(awk "BEGIN {printf \"%.1f\", $height / 10}")
+weight_kg=$(awk "BEGIN {printf \"%.0f\", $weight / 10}")
+
+# Format the output string using sed
+output="$name is of type $type, weighs ${weight_kg}kg, and is ${height_m}m tall."
+formatted_output=$(echo "$output" | sed -e 's/^./\u&/') # Capitalize first letter
+
+# Print the formatted output
+echo "$formatted_output"

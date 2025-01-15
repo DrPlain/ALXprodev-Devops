@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# Define the list of Pokémon
+POKEMON_LIST=("Bulbasaur" "Ivysaur" "Venusaur" "Charmander" "Charmeleon")
+API_URL="https://pokeapi.co/api/v2/pokemon"
+DELAY=2  # Delay in seconds between requests to avoid rate limiting
+
+# Create a directory to store the JSON files
+OUTPUT_DIR="pokemon_data"
+mkdir -p "$OUTPUT_DIR"
+
+# Loop through each Pokémon in the list
+for pokemon in "${POKEMON_LIST[@]}"; do
+    # Convert Pokémon name to lowercase for the API URL
+    pokemon_lower=$(echo "$pokemon" | tr '[:upper:]' '[:lower:]')
+
+    # Define the output file name
+    OUTPUT_FILE="$OUTPUT_DIR/$pokemon_lower.json"
+
+    # Make the API request and save the response to the file
+    echo "Fetching data for $pokemon..."
+    response=$(curl -s -w "%{http_code}" "$API_URL/$pokemon_lower" -o "$OUTPUT_FILE")
+    status_code=${response: -3}
+
+    # Check the status code
+    if [ "$status_code" -eq 200 ]; then
+        echo "Data for $pokemon saved to $OUTPUT_FILE."
+    else
+        echo "Error: Failed to fetch data for $pokemon. Status code: $status_code."
+        rm -f "$OUTPUT_FILE"  # Remove the file if the request fails
+    fi
+
+    # Add a delay between requests to avoid hitting the rate limit
+    sleep $DELAY
+done
+
+echo "All data retrieval complete."
