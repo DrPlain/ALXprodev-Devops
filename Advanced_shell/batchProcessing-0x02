@@ -1,13 +1,18 @@
 #!/bin/bash
 
 # Define the list of Pokémon
-POKEMON_LIST=("bulbasaur", "ivysaur", "venusaur", "charmander", "charmeleon")
+POKEMON_LIST=("bulbasaur" "ivysaur" "venusaur" "charmander" "charmeleon")
 API_URL="https://pokeapi.co/api/v2/pokemon"
 DELAY=2  # Delay in seconds between requests to avoid rate limiting
+RETRY_LIMIT=3  # Maximum number of retries for each Pokémon
 
 # Create a directory to store the JSON files
 OUTPUT_DIR="pokemon_data"
 mkdir -p "$OUTPUT_DIR"
+
+# Log file for errors
+ERROR_LOG="error_log.txt"
+> "$ERROR_LOG"  # Clear the log file
 
 # Loop through each Pokémon in the list
 for pokemon in "${POKEMON_LIST[@]}"; do
@@ -17,21 +22,35 @@ for pokemon in "${POKEMON_LIST[@]}"; do
     # Define the output file name
     OUTPUT_FILE="$OUTPUT_DIR/$pokemon_lower.json"
 
-    # Make the API request and save the response to the file
     echo "Fetching data for $pokemon..."
-    response=$(curl -s -w "%{http_code}" "$API_URL/$pokemon_lower" -o "$OUTPUT_FILE")
-    status_code=${response: -3}
+    attempt=0
+    success=0  # Flag to track success
 
-    # Check the status code
-    if [ "$status_code" -eq 200 ]; then
-        echo "Data for $pokemon saved to $OUTPUT_FILE."
-    else
-        echo "Error: Failed to fetch data for $pokemon. Status code: $status_code."
-        rm -f "$OUTPUT_FILE"  # Remove the file if the request fails
+    # Retry mechanism
+    while [ $attempt -lt $RETRY_LIMIT ]; do
+        ((attempt++))
+        response=$(curl -s -w "%{http_code}" "$API_URL/$pokemon_lower" -o "$OUTPUT_FILE")
+        status_code=${response: -3}
+
+        if [ "$status_code" -eq 200 ]; then
+            echo "Data for $pokemon saved to $OUTPUT_FILE."
+            success=1
+            break
+        else
+            echo "Attempt $attempt for $pokemon failed. Status code: $status_code."
+            sleep $DELAY  # Wait before retrying
+        fi
+    done
+
+    # If all attempts fail, log the error
+    if [ $success -eq 0 ]; then
+        echo "Error: Failed to fetch data for $pokemon after $RETRY_LIMIT attempts." | tee -a "$ERROR_LOG"
+        rm -f "$OUTPUT_FILE"  # Remove the file if all attempts fail
     fi
 
-    # Add a delay between requests to avoid hitting the rate limit
+    # Add a delay before the next Pokémon
     sleep $DELAY
 done
 
-echo "All data retrieval complete."
+echo "All data retrieval complete. Check $ERROR_LOG for any errors."
+
