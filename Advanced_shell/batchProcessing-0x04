@@ -43,4 +43,4 @@ done
 wait
 
 echo "All Pokémon data retrieval complete. Check $ERROR_LOG for any errors."
-
+# ["kill", "jobs"]
