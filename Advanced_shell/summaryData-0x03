@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# Directory containing JSON files
+INPUT_DIR="pokemon_data"
+OUTPUT_FILE="pokemon_report.csv"
+
+# Check if input directory exists
+if [ ! -d "$INPUT_DIR" ]; then
+    echo "Error: Directory $INPUT_DIR does not exist."
+    exit 1
+fi
+
+# Initialize CSV file with headers
+echo "Name,Height,Weight" > "$OUTPUT_FILE"
+
+# Process each JSON file in the directory
+for json_file in "$INPUT_DIR"/*.json; do
+    # Extract data using jq
+    name=$(jq -r '.name' "$json_file")
+    height=$(jq -r '.height' "$json_file")
+    weight=$(jq -r '.weight' "$json_file")
+
+    # Append the data to the CSV file
+    echo "$name,$height,$weight" >> "$OUTPUT_FILE"
+done
+
+# Display the generated CSV file
+echo "Pokémon report generated: $OUTPUT_FILE"
+cat "$OUTPUT_FILE"
+
+# Calculate the average height and weight using awk
+echo "Calculating averages..."
+awk -F, '
+NR > 1 {  # Skip the header row
+    total_height += $2
+    total_weight += $3
+    count++
+}
+END {
+    if (count > 0) {
+        printf "Average Height: %.2f\n", total_height / count
+        printf "Average Weight: %.2f\n", total_weight / count
+    } else {
+        print "No data to process."
+    }
+}' "$OUTPUT_FILE"
+
